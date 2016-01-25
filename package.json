@@ -1,6 +1,6 @@
 {
   "name": "hash-sync",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "description": "Sync location.hash with form elements",
   "main": "hashSync.jquery.js",
   "scripts": {

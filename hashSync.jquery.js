@@ -2,7 +2,7 @@
  * Sync location.hash with form elements
  *
  * @licencse MIT
- * @version 0.0.2
+ * @version 0.0.3
  */
 
 ;(function($){
@@ -91,7 +91,7 @@
             case 'undefined':
                 value = String(value);
             case 'string':
-            
+
             break;
 
             case 'function': return encode(value());
@@ -100,7 +100,7 @@
                 value = JSON.stringify(value);
             break;
         }
-        
+
         return value;
     }
 
@@ -145,48 +145,53 @@
             ,   del
             ;
             if(!n) return false;
-            
-            if(e.is(':checkbox')) {
-                if(!e.prop('checked')) {
-                    del = true;
+
+            switch(true) {
+                case e.is(':checkbox'): {
+                    del = !e.prop('checked');
+                } break;
+
+                case e.is(':radio'): {
+                    if(e.prop('checked')) {
+                        del = false;
+                    }
+                } break;
+
+                default: {
+                    del = v === '' || v == undefined;
                 }
             }
-            else if(!e.is(':radio')){
-                del = v === '' || v === null || v === undefined;
-            }
 
-            if(del) {
-                _d.hash.del(n, true);
-            }
-            else {
-                _d.hash.set(n, v, true);
+            if ( del != undefined ) {
+                if(del) {
+                    _d.hash.del(n, true);
+                }
+                else {
+                    _d.hash.set(n, v, true);
+                }
             }
         }
 
         function hash2input() {
-            var i, inp, v
-            ,   $e = $t.find(':input:not(.hash-sync-disabled)')
+            var $e = $t.find('textarea,select,input').not('.no-hash-sync')
             ;
-            $e.each(function(){
-                var inp = $(this)
+            $e.each(function(idx, elem){
+                var inp = $(elem)
+                ,   i = inp.attr('name')
+                ,   v = inp.val()
                 ;
+                if ( !i ) return; // no-name == no-action
 
-                v = inp.val();
-                i = inp.attr('name');
-
+                var h = _d.hash.get(i);
                 if(inp.is(':checkbox')) {
-                    inp.prop('checked', !!_d.hash.get(i));
-                    inp.trigger('change');
+                    _setChecked(inp, undefined != h);
                 }
                 else if(inp.is(':radio')) {
-                    inp.prop('checked', v == _d.hash.get(i));
-                    if(v == _d.hash.get(i)) {
-                        inp.trigger('change');
-                    }
+                    _setChecked(inp, v == h)
                 }
                 else {
-                    if(v != _d.hash.get(i)) {
-                        inp.val(_d.hash.get(i));
+                    if(v != h) {
+                        inp.val(h);
                         inp.trigger('change');
                     }
                 }
@@ -195,12 +200,22 @@
 
         hash2input();
 
-        $(window).on('hashchange', function(){
+        $(window).on('hashchange', function() {
             if(location.hash !== _d.hash.last_hash) {
                 _d.hash.readHash();
                 hash2input();
             }
         });
+
+        function _setChecked($int, checked) {
+            checked = !!checked;
+            if ( $int.prop('checked') != checked ) {
+                if ( checked || !$inp.is(':radio') ) {
+                    $int.prop('checked', checked).trigger('change');
+                }
+            }
+            return $int;
+        }
     }
 
     $.fn.hashSync = hashSync;
