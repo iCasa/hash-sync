@@ -91,6 +91,8 @@
             case 'undefined':
                 value = String(value);
             case 'string':
+            
+            break;
 
             case 'function': return encode(value());
 
@@ -98,6 +100,8 @@
                 value = JSON.stringify(value);
             break;
         }
+        
+        return value;
     }
 
     function decode(str) {
