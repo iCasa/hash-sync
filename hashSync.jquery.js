@@ -12,13 +12,14 @@
     var undefined;
 
     /* HashState class */
-
-    window.HashState = function(key) {
+    function HashState(key) {
         if(key) this.key = key;
         this.readHash();
     }
 
     var _hs = HashState.prototype;
+
+    _hs.key = undefined;
 
     _hs.set = function(key, val, silent) {
         var del = val === '' || val === null || val === undefined;
@@ -219,5 +220,6 @@
     }
 
     $.fn.hashSync = hashSync;
+    window.HashState = HashState;
 
 })(jQuery);
