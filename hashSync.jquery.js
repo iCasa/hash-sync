@@ -2,7 +2,7 @@
  * Sync location.hash with form elements
  *
  * @licencse MIT
- * @version 0.0.3
+ * @version 0.0.4
  */
 
 ;(function($){
@@ -21,25 +21,25 @@
 
     _hs.key = undefined;
 
-    _hs.set = function(key, val, silent) {
-        var del = val === '' || val === null || val === undefined;
-        if(del) return this.del(key);
-        this.data[key] = val;
-        this.writeHash(silent);
-        return this;
-    }
-
     _hs.get = function(key) {
         return key ? this.data[key] : this.data;
     }
 
-    _hs.del = function(key, silent){
-        delete this.data[key];
-        this.writeHash(silent);
+    _hs.set = function(key, val, silent, throttled) {
+        var del = val === '' || val === null || val === undefined;
+        if(del) return this.del(key);
+        this.data[key] = val;
+        throttled ? this.writeHashThrottled(silent) : this.writeHash(silent) ;
         return this;
     }
 
-    _hs.writeHash = function(silent){
+    _hs.del = function(key, silent, throttled){
+        delete this.data[key];
+        throttled ? this.writeHashThrottled(silent) : this.writeHash(silent) ;
+        return this;
+    }
+
+    _hs.writeHash = function(silent) {
         var i
         ,   h = []
         ;
@@ -53,6 +53,23 @@
 
         location.hash = h;
         return this;
+    }
+
+    _hs.writeHashThrottled = function(silent) {
+        var self = this;
+        var to = self._writeHashTo;
+        // If at least one call with silent == false, breack the silence
+        if ( !silent ) {
+            self._writeHashNoSilence = true;
+        }
+
+        if ( to ) clearTimeout(to);
+        return self._writeHashTo = to = setTimeout(function () {
+            silent = !self._writeHashNoSilence;
+            delete self._writeHashNoSilence;
+            delete self._writeHashTo;
+            self.writeHash(silent);
+        }, 15);
     }
 
     _hs.readHash = function() {
@@ -127,18 +144,19 @@
     function hashSync(opts) {
 
         var $t = this
-        ,   $i  = $t.find(':input:not(.hash-sync-disabled)')
         ,   _d = {
-            hash: opts.hash || (new HashState())
-          , last_hash: undefined
-        }
+                hash: opts.hash || (new HashState())
+              , last_hash: undefined
+            }
         ;
 
         function inputChange(evt) {
-            input2hash($(this));
+            var $target = $(evt.target);
+            if ( $target.is('.no-hash-sync') ) return;
+            input2hash($target);
         }
 
-        $i.on('change', inputChange);
+        $t.on('change input', inputChange);
 
         function input2hash(e) {
             var n = e.attr('name')
@@ -165,17 +183,16 @@
 
             if ( del != undefined ) {
                 if(del) {
-                    _d.hash.del(n, true);
+                    _d.hash.del(n, true, true);
                 }
                 else {
-                    _d.hash.set(n, v, true);
+                    _d.hash.set(n, v, true, true);
                 }
             }
         }
 
         function hash2input() {
-            var $e = $t.find('textarea,select,input').not('.no-hash-sync')
-            ;
+            var $e = findInputs($t);
             $e.each(function(idx, elem){
                 var inp = $(elem)
                 ,   i = inp.attr('name')
@@ -218,6 +235,19 @@
             return $int;
         }
     }
+
+    /**
+     *  Find selector in this and descendants of this.
+     */
+    function findAll(elems, selector) {
+        var search = elems.filter(selector);
+        return search.add(elems.not(search).find(selector));
+    }
+
+    function findInputs(context) {
+        return findAll($(context), 'textarea,select,input').not('.no-hash-sync');
+    }
+
 
     $.fn.hashSync = hashSync;
     window.HashState = HashState;
