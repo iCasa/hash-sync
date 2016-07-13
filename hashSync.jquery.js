@@ -2,14 +2,14 @@
  * Sync location.hash with form elements
  *
  * @licencse MIT
- * @version 0.0.4
+ * @version 0.0.5
  */
 
 ;(function($){
 
     "use strict";
 
-    var undefined;
+    var undefined; //jshint ignore:line
 
     /* HashState class */
     function HashState(key) {
@@ -19,87 +19,91 @@
 
     var _hs = HashState.prototype;
 
-    _hs.key = undefined;
+    $.extend(_hs, {
 
-    _hs.get = function(key) {
-        return key ? this.data[key] : this.data;
-    }
+        key: undefined,
 
-    _hs.set = function(key, val, silent, throttled) {
-        var del = val === '' || val === null || val === undefined;
-        if(del) return this.del(key);
-        this.data[key] = val;
-        throttled ? this.writeHashThrottled(silent) : this.writeHash(silent) ;
-        return this;
-    }
+        get: function(key) {
+            return key ? this.data[key] : this.data;
+        },
 
-    _hs.del = function(key, silent, throttled){
-        delete this.data[key];
-        throttled ? this.writeHashThrottled(silent) : this.writeHash(silent) ;
-        return this;
-    }
+        set: function(key, val, silent, throttled) {
+            var del = val === '' || val === null || val === undefined;
+            if(del) return this.del(key);
+            this.data[key] = val;
+            this[throttled ? 'writeHashThrottled' : 'writeHash'](silent);
+            return this;
+        },
 
-    _hs.writeHash = function(silent) {
-        var i
-        ,   h = []
-        ;
+        del: function(key, silent, throttled){
+            delete this.data[key];
+            this[throttled ? 'writeHashThrottled' : 'writeHash'](silent) ;
+            return this;
+        },
 
-        for(i in this.hash) {
-            h[h.length] = i+'='+encodeURIComponent(encode(this.hash[i]));
-        }
-        h.sort();
-        h = h.join('&');
-        if(silent) _hs.last_hash = '#' + h;
+        writeHash: function(silent) {
+            var i
+            ,   h = []
+            ;
 
-        location.hash = h;
-        return this;
-    }
+            for(i in this.hash) {
+                h[h.length] = i+'='+encodeURIComponent(encode(this.hash[i]));
+            }
+            h.sort();
+            h = h.join('&');
+            if(silent) _hs.last_hash = '#' + h;
 
-    _hs.writeHashThrottled = function(silent) {
-        var self = this;
-        var to = self._writeHashTo;
-        // If at least one call with silent == false, breack the silence
-        if ( !silent ) {
-            self._writeHashNoSilence = true;
-        }
+            location.hash = h;
+            return this;
+        },
 
-        if ( to ) clearTimeout(to);
-        return self._writeHashTo = to = setTimeout(function () {
-            silent = !self._writeHashNoSilence;
-            delete self._writeHashNoSilence;
-            delete self._writeHashTo;
-            self.writeHash(silent);
-        }, 15);
-    }
+        writeHashThrottled: function(silent) {
+            var self = this;
+            var to = self._writeHashTo;
+            // If at least one call with silent == false, breack the silence
+            if ( !silent ) {
+                self._writeHashNoSilence = true;
+            }
 
-    _hs.readHash = function() {
-        var h = location.hash
-        ,   o = get_url_vars(h, '#')
-        ,   i
-        ,   v
-        ,   k = this.key
-        ;
+            if ( to ) clearTimeout(to);
+            return self._writeHashTo =
+            to = setTimeout(function () {
+                silent = !self._writeHashNoSilence;
+                delete self._writeHashNoSilence;
+                delete self._writeHashTo;
+                self.writeHash(silent);
+            }, 15);
+        },
 
-        for(i in o) {
-            var v = decode(o[i]);
-            if ( v != undefined ) {
-                o[i] = v;
+        readHash: function() {
+            var h = location.hash
+            ,   o = get_url_vars(h, '#')
+            ,   i
+            ,   v
+            ,   k = this.key
+            ;
+
+            for(i in o) {
+                v = decode(o[i]);
+                if ( v != undefined ) {
+                    o[i] = v;
+                }
+                else {
+                    // delete o[i]; // ??? should we ignore values that we can't decode?
+                }
+            }
+            if(k) {
+                if(!o[k]) o[k] = {};
+                this.data = o[k];
             }
             else {
-                // delete o[i]; // ??? should we ignore values that we can't decode?
+                this.data = o;
             }
-        }
-        if(k) {
-            if(!o[k]) o[k] = {};
-            this.data = o[k];
-        }
-        else {
-            this.data = o;
-        }
-        this.hash = o;
+            this.hash = o;
 
-        return this;
-    }
+            return this;
+        }
+    });
 
     function encode(value) {
         if ( value == undefined ) return; // null and undefined
@@ -108,8 +112,9 @@
             case 'number':
             case 'undefined':
                 value = String(value);
-            case 'string':
+            /*falls through*/
 
+            case 'string':
             break;
 
             case 'function': return encode(value());
@@ -146,7 +151,7 @@
         var $t = this
         ,   _d = {
                 hash: opts.hash || (new HashState())
-              , last_hash: undefined
+              // , last_hash: undefined
             }
         ;
 
@@ -205,7 +210,7 @@
                     _setChecked(inp, undefined != h);
                 }
                 else if(inp.is(':radio')) {
-                    _setChecked(inp, v == h)
+                    _setChecked(inp, v == h);
                 }
                 else {
                     if(v != h) {
@@ -216,7 +221,10 @@
             });
         }
 
-        hash2input();
+        // Write hash to imputs only when there is a hash (a least "#")
+        if ( location.hash !== '' || location.href.slice(-1) === '#' ) {
+            hash2input();
+        }
 
         $(window).on('hashchange', function() {
             if(location.hash !== _d.hash.last_hash) {
@@ -248,8 +256,9 @@
         return findAll($(context), 'textarea,select,input').not('.no-hash-sync');
     }
 
-
+    window.HashState =
+    hashSync.HashState = HashState;
     $.fn.hashSync = hashSync;
-    window.HashState = HashState;
 
-})(jQuery);
+}
+(jQuery));

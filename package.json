@@ -1,6 +1,6 @@
 {
   "name": "hash-sync",
-  "version": "0.0.4",
+  "version": "0.0.5",
   "description": "Sync location.hash with form elements",
   "main": "hashSync.jquery.js",
   "scripts": {
@@ -22,6 +22,22 @@
     "files": [
       "hashSync.jquery.js"
     ]
+  },
+  "jshintConfig": {
+    "browser": true,
+    "laxbreak": true,
+    "laxcomma": true,
+    "undef": true,
+    "unused": true,
+    "sub": true,
+    "expr": true,
+    "bitwise": false,
+    "eqeqeq": false,
+    "boss": true,
+    "eqnull": true,
+    "scripturl": true,
+    "-W041": false,
+    "-W018": false
   },
   "devDependencies": {
     "babel-preset-es2015": "^6.3",
