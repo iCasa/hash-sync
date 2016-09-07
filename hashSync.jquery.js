@@ -2,7 +2,7 @@
  * Sync location.hash with form elements
  *
  * @licencse MIT
- * @version 0.0.5
+ * @version 0.0.6
  */
 
 ;(function($){
@@ -10,12 +10,18 @@
     "use strict";
 
     var undefined; //jshint ignore:line
+    var hop = Object.hasOwnProperty || ({}).hasOwnProperty;
 
     /* HashState class */
     function HashState(key) {
         if(key) this.key = key;
+        this._listeners = [];
+        this._idx = HashState._instances.length;
+        HashState._instances[this._idx] = this;
         this.readHash();
     }
+
+    HashState._instances = [];
 
     var _hs = HashState.prototype;
 
@@ -23,35 +29,62 @@
 
         key: undefined,
 
+        _listeners: undefined,
+        _idx: -1,
+
         get: function(key) {
             return key ? this.data[key] : this.data;
         },
 
         set: function(key, val, silent, throttled) {
             var del = val === '' || val === null || val === undefined;
-            if(del) return this.del(key);
+            if(del) return this.del(key, silent, throttled);
             this.data[key] = val;
             this[throttled ? 'writeHashThrottled' : 'writeHash'](silent);
             return this;
         },
 
-        del: function(key, silent, throttled){
+        del: function(key, silent, throttled) {
             delete this.data[key];
             this[throttled ? 'writeHashThrottled' : 'writeHash'](silent) ;
             return this;
         },
 
+        destroy: function () {
+            var _listeners = this._listeners;
+            _listeners.length = 0;
+            delete HashState._instances[this._idx];
+        },
+
+        onChange: function (fn) {
+            var _listeners = this._listeners;
+            if ( _listeners.indexOf(fn) < 0 ) {
+                _listeners.push(fn);
+            }
+        },
+
+        offChange: function (fn) {
+            var _listeners = this._listeners;
+            var l = _listeners.length;
+            while (l--) {
+                if ( _listeners[l] === fn ) {
+                    _listeners.splice(l, 1);
+                }
+            }
+        },
+
         writeHash: function(silent) {
             var i
             ,   h = []
+            ,   hash = this.hash
             ;
 
-            for(i in this.hash) {
-                h[h.length] = i+'='+encodeURIComponent(encode(this.hash[i]));
+            for(i in hash) if ( hop.call(hash, i) ){
+                h[h.length] = i+'='+encodeURIComponent(encode(hash[i]));
             }
             h.sort();
             h = h.join('&');
-            if(silent) _hs.last_hash = '#' + h;
+            if(silent) this.last_hash = '#' + h;
 
             location.hash = h;
             return this;
@@ -83,23 +116,65 @@
             ,   k = this.key
             ;
 
-            for(i in o) {
+            for(i in o) if ( hop.call(o, i) ) {
                 v = decode(o[i]);
                 if ( v != undefined ) {
                     o[i] = v;
                 }
-                else {
+                // else {
                     // delete o[i]; // ??? should we ignore values that we can't decode?
-                }
-            }
-            if(k) {
-                if(!o[k]) o[k] = {};
-                this.data = o[k];
-            }
-            else {
-                this.data = o;
+                // }
             }
             this.hash = o;
+            if(k) {
+                if(!o[k]) o[k] = {};
+                o = o[k];
+            }
+
+            var data = this.data;
+            this.data = o;
+            if ( this._listeners.length ) {
+                // var evt = {};
+                // var added = {};
+                // var updated = {};
+                // var removed = {};
+                var _old = {};
+                var _new = {};
+                var changed;
+
+                for(i in o) if ( hop.call(o, i) ) {
+                    v = o[i];
+                    _new[i] = v;
+
+                    // update
+                    if ( hop.call(data, i) ) {
+                        if ( data[i] !== v ) {
+                            _old[i] = data[i];
+                            // updated[i] = data[i];
+                            // evt.update = updated;
+                            changed = true;
+                        }
+                    }
+                    // add
+                    else {
+                        // added[i] = v;
+                        // evt.add = added;
+                        changed = true;
+                    }
+                }
+
+                // removed
+                for(i in data) if ( hop.call(data, i) && !hop.call(o, i) ) {
+                    _old[i] = data[i];
+                    // removed[i] = data[i];
+                    // evt['delete'] = removed;
+                    changed = true;
+                }
+
+                if ( changed ) {
+                    emitEvent.call(this, this._listeners, _new, _old);
+                }
+            }
 
             return this;
         }
@@ -226,17 +301,12 @@
             hash2input();
         }
 
-        $(window).on('hashchange', function() {
-            if(location.hash !== _d.hash.last_hash) {
-                _d.hash.readHash();
-                hash2input();
-            }
-        });
+        _d.hash.onChange(hash2input);
 
         function _setChecked($int, checked) {
             checked = !!checked;
             if ( $int.prop('checked') != checked ) {
-                if ( checked || !$inp.is(':radio') ) {
+                if ( checked || !$int.is(':radio') ) {
                     $int.prop('checked', checked).trigger('change');
                 }
             }
@@ -256,9 +326,28 @@
         return findAll($(context), 'textarea,select,input').not('.no-hash-sync');
     }
 
+    function emitEvent(_listeners, newData, oldData) {
+        for(var i=0, l=_listeners.length, fn; i<l; i++ ) {
+            fn = _listeners[i];
+            if ( !fn ) continue;
+            fn.call(this, newData, oldData);
+        }
+    }
+
     window.HashState =
     hashSync.HashState = HashState;
     $.fn.hashSync = hashSync;
+
+    $(window).on('hashchange', function() {
+        var hash = location.hash;
+        $.each(HashState._instances, function (i, h) {
+            if(hash !== h.last_hash) {
+                h.readHash();
+                h.last_hash = hash;
+            }
+        });
+        _hs.last_hash = hash;
+    });
 
 }
 (jQuery));
