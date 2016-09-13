@@ -2,7 +2,7 @@
  * Sync location.hash with form elements
  *
  * @licencse MIT
- * @version 0.0.6
+ * @version 0.0.7
  */
 
 ;(function($){
@@ -144,11 +144,11 @@
 
                 for(i in o) if ( hop.call(o, i) ) {
                     v = o[i];
-                    _new[i] = v;
 
                     // update
                     if ( hop.call(data, i) ) {
                         if ( data[i] !== v ) {
+                            _new[i] = v;
                             _old[i] = data[i];
                             // updated[i] = data[i];
                             // evt.update = updated;
@@ -157,6 +157,7 @@
                     }
                     // add
                     else {
+                        _new[i] = v;
                         // added[i] = v;
                         // evt.add = added;
                         changed = true;
