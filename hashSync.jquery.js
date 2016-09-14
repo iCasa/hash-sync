@@ -2,7 +2,7 @@
  * Sync location.hash with form elements
  *
  * @licencse MIT
- * @version 0.0.7
+ * @version 0.0.8
  */
 
 ;(function($){
@@ -39,6 +39,11 @@
         set: function(key, val, silent, throttled) {
             var del = val === '' || val === null || val === undefined;
             if(del) return this.del(key, silent, throttled);
+            var num = parseFloat(val);
+            if ( num == val ) {
+                val = num;
+            }
+
             this.data[key] = val;
             this[throttled ? 'writeHashThrottled' : 'writeHash'](silent);
             return this;
@@ -204,6 +209,7 @@
     }
 
     function decode(str) {
+        if ( str == undefined ) return str;
         var num = parseFloat(str);
         if ( num == str ) return num;
         var fl = str.substr(0,1) + str.slice(-1);
@@ -218,7 +224,6 @@
 
         return str;
     }
-
 
     /* hashSync jQuery plugin */
 
