@@ -2,7 +2,7 @@
  * Sync location.hash with form elements
  *
  * @licencse MIT
- * @version 0.0.8
+ * @version 0.0.9
  */
 
 ;(function($){
@@ -146,13 +146,14 @@
                 var _old = {};
                 var _new = {};
                 var changed;
+                var isEq = this.isEqual || HashState.isEqual || _isEqual;
 
                 for(i in o) if ( hop.call(o, i) ) {
                     v = o[i];
 
                     // update
                     if ( hop.call(data, i) ) {
-                        if ( data[i] !== v ) {
+                        if ( !isEq(data[i], v) ) {
                             _new[i] = v;
                             _old[i] = data[i];
                             // updated[i] = data[i];
@@ -338,6 +339,10 @@
             if ( !fn ) continue;
             fn.call(this, newData, oldData);
         }
+    }
+
+    function _isEqual(a,b) {
+        return a === b;
     }
 
     window.HashState =
