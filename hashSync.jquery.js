@@ -2,10 +2,10 @@
  * Sync location.hash with form elements
  *
  * @licencse MIT
- * @version 0.0.9
+ * @version 0.1.0
  */
 
-;(function($){
+;(function($) {
 
     "use strict";
 
@@ -22,6 +22,21 @@
     }
 
     HashState._instances = [];
+
+    HashState.instance = function (key) {
+        var ret;
+        HashState._instances.forEach(function (I) {
+            if ( I.key === key ) {
+                ret = I;
+                return false;
+            }
+        });
+        if ( !ret ) {
+            ret = new HashState(key);
+        }
+
+        return ret;
+    };
 
     var _hs = HashState.prototype;
 
@@ -232,7 +247,7 @@
 
         var $t = this
         ,   _d = {
-                hash: opts.hash || (new HashState())
+                hash: opts.hash || (HashState.instance())
               // , last_hash: undefined
             }
         ;
