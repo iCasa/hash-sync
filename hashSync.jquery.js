@@ -21,6 +21,8 @@
         this.readHash();
     }
 
+    var _hs = HashState.prototype;
+
     HashState._instances = [];
 
     HashState.instance = function (key) {
@@ -38,7 +40,16 @@
         return ret;
     };
 
-    var _hs = HashState.prototype;
+    HashState.readHash = function () {
+        var hash = location.hash;
+        $.each(HashState._instances, function (i, h) {
+            if(hash !== h.last_hash) {
+                h.readHash();
+                h.last_hash = hash;
+            }
+        });
+        _hs.last_hash = hash;
+    };
 
     $.extend(_hs, {
 
@@ -52,7 +63,7 @@
         },
 
         set: function(key, val, silent, throttled) {
-            var del = val === '' || val === null || val === undefined;
+            var del = val == undefined;
             if(del) return this.del(key, silent, throttled);
             var num = parseFloat(val);
             if ( num == val ) {
@@ -95,12 +106,15 @@
 
         writeHash: function(silent) {
             var i
+            ,   v
             ,   h = []
             ,   hash = this.hash
             ;
 
             for(i in hash) if ( hop.call(hash, i) ){
-                h[h.length] = i+'='+encodeURIComponent(encode(hash[i]));
+                v = hash[i];
+                if ( v !== '' && v != undefined ) v = '='+encodeURIComponent(encode(v));
+                h.push(i+v);
             }
             h.sort();
             h = h.join('&');
@@ -130,7 +144,7 @@
 
         readHash: function() {
             var h = location.hash
-            ,   o = get_url_vars(h, '#')
+            ,   o = h ? Object.fromUrl(h.substr(1)) : {}
             ,   i
             ,   v
             ,   k = this.key
@@ -356,6 +370,36 @@
         }
     }
 
+    // var _regsep_ = {};
+    // Object.fromUrl = function (str, sep='&', eq='=', ndec=false) {
+    //     if ( ndec ) {
+    //         let _sep = _regsep_[sep];
+    //         if ( !_sep  ) {
+    //             _sep = encodeURIComponent(sep);
+    //             if ( sep == _sep ) _sep = sep.split('').map((c) => '%' + c.charCodeAt(0).toString(16));
+    //             _regsep_[sep] = new RegExp(_sep, 'g');
+    //         }
+    //         ndec = (v) => Object(v).replace(_sep, '&');
+    //     }
+    //     else {
+    //         ndec = decodeURIComponent;
+    //         if ( sep == '&' ) str = str.replace(/\+/g, ' ');
+    //     }
+
+    //     var j = str.split(sep)
+    //     ,   i = j.length
+    //     ,   a = {}
+    //     ,   t
+    //     ;
+    //     while(i-->0) if(t = j[i].ltrim()) {
+    //         t = t.split(eq);
+    //         j[i] = t.splice(0,1)[0].rtrim();
+    //         t = t.join(eq);
+    //         a[ndec(j[i])] = ndec(t.ltrim());
+    //     }
+    //     return a;
+    // };
+
     function _isEqual(a,b) {
         return a === b;
     }
@@ -364,16 +408,7 @@
     hashSync.HashState = HashState;
     $.fn.hashSync = hashSync;
 
-    $(window).on('hashchange', function() {
-        var hash = location.hash;
-        $.each(HashState._instances, function (i, h) {
-            if(hash !== h.last_hash) {
-                h.readHash();
-                h.last_hash = hash;
-            }
-        });
-        _hs.last_hash = hash;
-    });
+    $(window).on('hashchange', HashState.readHash);
 
 }
 (jQuery));
