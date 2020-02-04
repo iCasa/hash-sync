@@ -2,7 +2,7 @@
  * Sync location.hash with form elements
  *
  * @licencse MIT
- * @version 0.1.0
+ * @version 0.1.1
  */
 
 ;(function($) {
@@ -324,12 +324,27 @@
                     _setChecked(inp, v == h);
                 }
                 else {
-                    if(v != h) {
+                    h = normalize_value(h);
+                    if(normalize_value(v) != h) {
                         inp.val(h);
                         inp.trigger('change');
                     }
                 }
             });
+        }
+
+        function normalize_value(v) {
+            if(v===0) {
+                return '0';
+            }else if(is_nan(v) || v===undefined || v===false) {
+                return '';
+            }else{
+                return v;
+            }
+        }
+
+        function is_nan(n) {
+            return typeof n == 'number' && n!==n;
         }
 
         // Write hash to imputs only when there is a hash (a least "#")
